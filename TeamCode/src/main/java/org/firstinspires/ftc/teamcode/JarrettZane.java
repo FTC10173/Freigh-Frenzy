@@ -33,8 +33,8 @@ public class JarrettZane extends LinearOpMode {
     public boolean CarouselBlue(){return gamepad2.x;}
     public boolean CarouselRed(){return gamepad2.b;}
     public boolean LevelMan(){return true;}//toggles manual levels or pre set levels
-    public double Levely(){return -gamepad2.left_stick_y;} //min of 20%
-    public double Levelr(){return gamepad2.right_stick_y;}
+    public double Levely(){return gamepad2.left_stick_y;} //min of 20%
+    public double Levelr(){return -gamepad2.right_stick_y;}
     // true/false return false if don't want to use one of these
     public boolean Level0(){ return false;}
     public boolean Level1(){ return false;}
