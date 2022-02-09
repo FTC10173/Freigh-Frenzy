@@ -5,12 +5,15 @@ import random
 
 pg.init()
 fieldSize = 705
+PPI = 5
+RAD = 0.0174533
+DEG = 57.2958
 RSize = (64,90)
 IMUPos = (0,0,0)
 DSPos = ((0,45,0),(32,0,90),(0,-45,180),(-32,0,270))
 assets = ((2,0,0,fieldSize,fieldSize),(1,240,300,45),(1,465,300,45),(1,10,10,37.5),(1,695,10,37.5))
-acc = ((6,90),(-3,-45))
-maxVel = (3,180)
+acc = ((6,90),(-2,-20))
+maxVel = (20,150)
 rand = (-1,1)
 maxRange = 250
 screen = pg.display.set_mode((fieldSize, fieldSize))
@@ -71,9 +74,9 @@ class Robot:
     def move(self, vectors):
         vectors.append(self.vel)
         self.vel = self.vectorAdd(vectors)
-        self.vel[0] = min(max(self.vel[0]-.1,0),maxVel[0])
+        self.vel = [min(max(self.vel[0]+acc[1][0]/FPS*PPI,0),maxVel[0]/FPS*PPI),self.vel[1], min(max(0,self.vel[2]+acc[1][1]/FPS*RAD),maxVel[1]/FPS*RAD)if self.vel[2] > 0 else max(min(0,self.vel[2]-acc[1][1]/FPS*RAD),-1*maxVel[1]/FPS*RAD)]
         vel = (m.cos(self.vel[1])*self.vel[0] + m.cos(self.vel[1])*self.vel[0], m.sin(self.vel[1])*self.vel[0] + m.sin(self.vel[1])*self.vel[0])
-        newPos = [self.RPos[0]+ vel[0]*m.cos(self.RPos[2]) + vel[1]*m.cos(m.pi/2 + self.RPos[2]), self.RPos[1] + vel[0]*m.sin(self.RPos[2]) + vel[1]*m.sin(m.pi/2 - self.RPos[2]), 3*m.pi/2]
+        newPos = [self.RPos[0]+ vel[0]*m.cos(self.RPos[2]) + vel[1]*m.cos(m.pi/2 + self.RPos[2]), self.RPos[1] + vel[0]*m.sin(self.RPos[2]) + vel[1]*m.sin(m.pi/2 - self.RPos[2]), self.RPos[2]+self.vel[2]]
         if not self.collisionDetection(newPos)[0]:
             self.RPos[0] = newPos[0]
             self.RPos[2] = newPos[2]
@@ -84,10 +87,12 @@ class Robot:
     def vectorAdd(self, vectors):
         x = 0
         y = 0
+        a = 0
         for v in vectors:
             x += m.cos(v[1])*v[0] 
             y += m.sin(v[1])*v[0]
-        return [m.sqrt(x**2+y**2), m.atan2(y, x)]
+            a += v[2]
+        return [m.sqrt(x**2+y**2), m.atan2(y, x), a]
 
     def collisionDetection(self, pos):
         diag = m.sqrt((RSize[0]/2)**2 + (RSize[1]/2)**2)
@@ -98,7 +103,6 @@ class Robot:
 RPos = [100,100,0]
 robot1 = Robot(RSize, RPos, acc)
 sensors = Sensor(DSPos, rand, IMUPos)
-speed = 30
 FPS = 30 # frames per second setting
 fpsClock = pygame.time.Clock()
 
@@ -108,13 +112,18 @@ while True:
     accVectors = []
     keys = pygame.key.get_pressed()
     if keys[pygame.K_w]:
-        accVectors.append((1,0))
-    if keys[pygame.K_d]:
-        accVectors.append((1,m.pi/2))
+        accVectors.append((acc[0][0]/FPS*PPI,0,0))
+    if keys[pygame.K_e]:
+        accVectors.append((acc[0][0]/FPS*PPI,m.pi/2,0))
     if keys[pygame.K_s]:
-        accVectors.append((1,m.pi))
+        accVectors.append((acc[0][0]/FPS*PPI,m.pi,0))
+    if keys[pygame.K_q]:
+        accVectors.append((acc[0][0]/FPS*PPI,3*m.pi/2,0))
     if keys[pygame.K_a]:
-        accVectors.append((1,3*m.pi/2))
+        accVectors.append((0,0,-acc[0][1]/FPS*RAD))
+    if keys[pygame.K_d]:
+        accVectors.append((0,0,acc[0][1]/FPS*RAD))
+    
         
     robot1.move(accVectors)
     for event in pg.event.get():
