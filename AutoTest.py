@@ -12,11 +12,50 @@ RSize = (64,90)
 IMUPos = (0,0,0)
 DSPos = ((0,45,0),(32,0,90),(0,-45,180),(-32,0,270))
 assets = ((2,0,0,fieldSize,fieldSize),(1,240,300,45),(1,465,300,45),(1,10,10,37.5),(1,695,10,37.5))
+assets = [[(True,True,False,False),[[2,0,0,fieldSize,fieldSize,(0,0,0),0]],[[2,0,0,fieldSize,fieldSize,(0,0,0),0]]]]
 acc = ((6,90),(-2,-20))
 maxVel = (20,150)
 rand = (-1,1)
 maxRange = 250
 screen = pg.display.set_mode((fieldSize, fieldSize))
+
+
+class Assets:
+    def __init__(self, assets):
+        self.assets = assets
+    def addAsset (self, asset):
+        self.assets.append(asset)
+    def dist(self, p):
+        dist = 1000
+        for asset in assets:
+            if(asset[0][0]):
+                for shape in asset[1]:
+                    if shape[0] == 0:
+                        dist = min(dist, m.sqrt(max(shape[1] - p[0], 0, p[0] - shape[3])**2 + max(shape[2] - p[1], 0, p[1] - shape[4])**2))
+                    elif shape[0] == 1:
+                        dist = min(dist, m.sqrt((p[0] - shape[1])**2 + (p[1] - shape[2])**2)-shape[3])
+                    elif shape[0] == 2:
+                        dist = min(dist,min(p[0]-shape[1], shape[3]-p[0], p[1]-shape[2], shape[4]-p[1]))
+        return dist
+    def drawAssets(self):
+        for asset in self.assets:
+            for s in asset[0]:
+                if s[0] == 0:
+                    p = lambda x,y : ((y*s[4]/2)*m.cos(s[5])-(x*s[3]/2)*m.sin(s[5])+s[1],(y*s[4]/2)*m.sin(s[5])+(x*s[3]/2)*m.cos(s[5])+s[2])
+                    pygame.draw.rect(screen, s[6], (p(1,1),p(1,-1),p(-1,-1),p(-1,1)), s[7])
+                elif s[0] == 1:
+                    pygame.draw.circle(screen, s[6], (s[1],s[2]), s[3], s[5])
+    def moveAsset(self, num, v):
+        newShapes = []
+        for i, s in enumerate(self.assets[num][0]):
+            if s[0] == 0:
+                newShapes.append([0,s[1]+v[0]*m.cos(v[1]),s[2]+v[0]*m.sin(v[1]),s[3],s[4],s[5]+v[1],s[6],s[7]])
+            if s[0] == 1:
+                newShapes.appen([0,s[1]+v[0]*m.cos(v[1]),s[2]+v[0]*m.sin(v[1]),s[3],s[4],s[5]])
+    def checkCollision(self, num):
+        pass
+        
+
 
 class Sensor:
     def __init__(self, DSPos, rand, IMUPos):
@@ -24,22 +63,9 @@ class Sensor:
         self.IMUPos = IMUPos
         self.rand = rand
 
-    def dist(self, assets, p):
-        dist = 1000
-        for asset in assets:
-            if asset[0] == 0:
-                dist = min(dist, m.sqrt(max(asset[1] - p[0], 0, p[0] - asset[3])**2 + max(asset[2] - p[1], 0, p[1] - asset[4])**2))
-                pygame.draw.rect(screen, (0,0,0), (asset[1],asset[2],asset[3]-asset[1],asset[4]-asset[2]), 4)
-            elif asset[0] == 1:
-                dist = min(dist, m.sqrt((p[0] - asset[1])**2 + (p[1] - asset[2])**2)-asset[3])
-                pygame.draw.circle(screen, (0,0,0), (asset[1],asset[2]), asset[3], 4)
-            elif asset[0] == 2:
-                dist = min(dist,min(p[0]-asset[1], asset[3]-p[0], p[1]-asset[2], asset[4]-p[1]))
-        return dist
-
     def getDistance(self, RPos, DS):
         DSAbs = ((DSPos[DS][1]*m.cos(m.pi*2-RPos[2]))+(DSPos[DS][0]*m.sin(m.pi*2-RPos[2]))+RPos[0],(DSPos[DS][0]*m.cos(m.pi*2-RPos[2]))-(DSPos[DS][1]*m.sin(m.pi*2-RPos[2]))+RPos[1],RPos[2]+(DSPos[DS][2]*0.0174533))
-        distance = self.dist(assets, DSAbs)
+        distance = field1.dist(assets, DSAbs)
         DSVal = 0
         while distance > 1:
             distance = self.dist(assets, DSAbs)
@@ -57,19 +83,21 @@ class Sensor:
         return self.rand[0]+(random.random()*(self.rand[1]-self.rand[0]))
 
 class Robot:
-    def __init__(self, RSize, RPos, acc):
-        self.RSize = RSize
+    def __init__(self, asset, DSPos, IMUPos, rand):
+        sensors = Sensor(DSPos, IMUPos, rand)
+        self.asset = asset
+        self.RSize = (asset[0][0][3],asset[0][0][4])
         self.RPos = RPos
         self.acc = acc
         self.vel = [0,0,0]
 
-    def drawRobot(self):
-        points = []
-        points.append(((self.RSize[1]/2)*m.cos(self.RPos[2])-(self.RSize[0]/2)*m.sin(self.RPos[2])+self.RPos[0],(self.RSize[1]/2)*m.sin(self.RPos[2])+(self.RSize[0]/2)*m.cos(self.RPos[2])+self.RPos[1]))
-        points.append(((-self.RSize[1]/2)*m.cos(self.RPos[2])-(self.RSize[0]/2)*m.sin(self.RPos[2])+self.RPos[0],(-self.RSize[1]/2)*m.sin(self.RPos[2])+(self.RSize[0]/2)*m.cos(self.RPos[2])+self.RPos[1]))
-        points.append(((-self.RSize[1]/2)*m.cos(self.RPos[2])-(-self.RSize[0]/2)*m.sin(self.RPos[2])+self.RPos[0],(-self.RSize[1]/2)*m.sin(self.RPos[2])+(-self.RSize[0]/2)*m.cos(self.RPos[2])+self.RPos[1]))
-        points.append(((self.RSize[1]/2)*m.cos(self.RPos[2])-(-self.RSize[0]/2)*m.sin(self.RPos[2])+self.RPos[0],(self.RSize[1]/2)*m.sin(self.RPos[2])+(-self.RSize[0]/2)*m.cos(self.RPos[2])+self.RPos[1]))
-        pg.draw.polygon(screen, (0,0,0), points, 5)
+    # def drawRobot(self):
+    #     points = []
+    #     points.append(((self.RSize[1]/2)*m.cos(self.RPos[2])-(self.RSize[0]/2)*m.sin(self.RPos[2])+self.RPos[0],(self.RSize[1]/2)*m.sin(self.RPos[2])+(self.RSize[0]/2)*m.cos(self.RPos[2])+self.RPos[1]))
+    #     points.append(((-self.RSize[1]/2)*m.cos(self.RPos[2])-(self.RSize[0]/2)*m.sin(self.RPos[2])+self.RPos[0],(-self.RSize[1]/2)*m.sin(self.RPos[2])+(self.RSize[0]/2)*m.cos(self.RPos[2])+self.RPos[1]))
+    #     points.append(((-self.RSize[1]/2)*m.cos(self.RPos[2])-(-self.RSize[0]/2)*m.sin(self.RPos[2])+self.RPos[0],(-self.RSize[1]/2)*m.sin(self.RPos[2])+(-self.RSize[0]/2)*m.cos(self.RPos[2])+self.RPos[1]))
+    #     points.append(((self.RSize[1]/2)*m.cos(self.RPos[2])-(-self.RSize[0]/2)*m.sin(self.RPos[2])+self.RPos[0],(self.RSize[1]/2)*m.sin(self.RPos[2])+(-self.RSize[0]/2)*m.cos(self.RPos[2])+self.RPos[1]))
+    #     pg.draw.polygon(screen, (0,0,0), points, 5)
 
     def move(self, vectors):
         vectors.append(self.vel)
@@ -101,9 +129,9 @@ class Robot:
         return (pos[0]-size[0] < 0 or pos[0]+size[0] > fieldSize, pos[1]-size[1] < 0 or pos[1]+size[1] > fieldSize)
 
 RPos = [100,100,0]
-robot1 = Robot(RSize, RPos, acc)
-sensors = Sensor(DSPos, rand, IMUPos)
-FPS = 30 # frames per second setting
+field1 = Assets(assets)
+robot1 = Robot(assets[1], DSPos, IMUPos, rand)
+FPS = 30
 fpsClock = pygame.time.Clock()
 
 
