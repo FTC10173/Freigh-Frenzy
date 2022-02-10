@@ -11,9 +11,12 @@ DEG = 57.2958
 RSize = (64,90)
 IMUPos = (0,0,0)
 DSPos = ((0,45,0),(32,0,90),(0,-45,180),(-32,0,270))
-assets = ((2,0,0,fieldSize,fieldSize),(1,240,300,45),(1,465,300,45),(1,10,10,37.5),(1,695,10,37.5))
-assets = [[(True,True,False,False),[[2,0,0,fieldSize,fieldSize,(0,0,0),0]],[[2,0,0,fieldSize,fieldSize,(0,0,0),0]]]]
-acc = ((6,90),(-2,-20))
+assets = [[[100,100,0],[(0,(0,0,64,90,0),(0,0,0),4),(0,(32,0,10,10,0),(0,0,0),4)],(3,0),True,(-2,-20)]]
+assets.append([[240,300,0],[(1,(0,0,45),(255,0,0),4),(1,(0,0,37.5),(255,0,0),4),(1,(0,0,30),(255,0,0),4),(1,(0,0,3.25),(255,0,0),0)],(2,1,0,0),True,(-2,-20)])
+assets.append([[465,300,0],[(1,(0,0,45),(0,0,255),4),(1,(0,0,37.5),(0,0,255),4),(1,(0,0,30),(0,0,255),4),(1,(0,0,3.25),(0,0,255),0)],(2,1,0,0),True,(-2,-20)])
+assets.append([[10,10,0],[(1,(0,0,37.5),(0,0,0),4)],(2),False])
+assets.append([[695,10,0],[(1,(0,0,37.5),(0,0,0),4)],(2),False])
+acc = (6,90)
 maxVel = (20,150)
 rand = (-1,1)
 maxRange = 250
@@ -29,29 +32,27 @@ class Assets:
         dist = 1000
         for asset in assets:
             if(asset[0][0]):
-                for shape in asset[1]:
-                    if shape[0] == 0:
-                        dist = min(dist, m.sqrt(max(shape[1] - p[0], 0, p[0] - shape[3])**2 + max(shape[2] - p[1], 0, p[1] - shape[4])**2))
-                    elif shape[0] == 1:
-                        dist = min(dist, m.sqrt((p[0] - shape[1])**2 + (p[1] - shape[2])**2)-shape[3])
-                    elif shape[0] == 2:
-                        dist = min(dist,min(p[0]-shape[1], shape[3]-p[0], p[1]-shape[2], shape[4]-p[1]))
+                for s in asset[1]:
+                    d = s[1]
+                    if s[0] == 0:
+                        dist = min(dist, m.sqrt(max(d[0] - p[0], 0, p[0] - d[2])**2 + max(d[1] - p[1], 0, p[1] - d[3])**2))
+                    elif s[0] == 1:
+                        dist = min(dist, m.sqrt((p[0] - d[0])**2 + (p[1] - d[1])**2)-d[2])
+                    elif s[0] == 2:
+                        dist = min(dist,min(p[0]-d[0], d[2]-p[0], p[1]-d[1], d[3]-p[1]))
         return dist
     def drawAssets(self):
         for asset in self.assets:
-            for s in asset[0]:
+            for s in asset[1]:
+                d = s[1]
                 if s[0] == 0:
-                    p = lambda x,y : ((y*s[4]/2)*m.cos(s[5])-(x*s[3]/2)*m.sin(s[5])+s[1],(y*s[4]/2)*m.sin(s[5])+(x*s[3]/2)*m.cos(s[5])+s[2])
-                    pygame.draw.rect(screen, s[6], (p(1,1),p(1,-1),p(-1,-1),p(-1,1)), s[7])
+                    p = lambda x,y : (((y*d[3]/2)+d[1])*m.cos(d[4]+asset[0][2])-((x*d[2]/2)+d[0])*m.sin(d[4]+asset[0][2])+asset[0][0]-d[0],((y*d[3]/2)+d[1])*m.sin(d[4]+asset[0][2])+((x*d[2]/2)+d[0])*m.cos(d[4]+asset[0][2])+asset[0][1]-d[1])
+                    pygame.draw.polygon(screen, s[2], (p(1,1),p(1,-1),p(-1,-1),p(-1,1)), s[3])
                 elif s[0] == 1:
-                    pygame.draw.circle(screen, s[6], (s[1],s[2]), s[3], s[5])
+                    pygame.draw.circle(screen, s[2], (d[0]+asset[0][0],d[1]+asset[0][1]), d[2], s[3])
     def moveAsset(self, num, v):
-        newShapes = []
-        for i, s in enumerate(self.assets[num][0]):
-            if s[0] == 0:
-                newShapes.append([0,s[1]+v[0]*m.cos(v[1]),s[2]+v[0]*m.sin(v[1]),s[3],s[4],s[5]+v[1],s[6],s[7]])
-            if s[0] == 1:
-                newShapes.appen([0,s[1]+v[0]*m.cos(v[1]),s[2]+v[0]*m.sin(v[1]),s[3],s[4],s[5]])
+        d = self.assets[num][0]
+        self.assets[num][0] = [d[0]+v[0]*m.cos(v[1]),d[1]+v[0]*m.sin(v[1]),d[2]+v[1]]
     def checkCollision(self, num):
         pass
         
@@ -91,14 +92,6 @@ class Robot:
         self.acc = acc
         self.vel = [0,0,0]
 
-    # def drawRobot(self):
-    #     points = []
-    #     points.append(((self.RSize[1]/2)*m.cos(self.RPos[2])-(self.RSize[0]/2)*m.sin(self.RPos[2])+self.RPos[0],(self.RSize[1]/2)*m.sin(self.RPos[2])+(self.RSize[0]/2)*m.cos(self.RPos[2])+self.RPos[1]))
-    #     points.append(((-self.RSize[1]/2)*m.cos(self.RPos[2])-(self.RSize[0]/2)*m.sin(self.RPos[2])+self.RPos[0],(-self.RSize[1]/2)*m.sin(self.RPos[2])+(self.RSize[0]/2)*m.cos(self.RPos[2])+self.RPos[1]))
-    #     points.append(((-self.RSize[1]/2)*m.cos(self.RPos[2])-(-self.RSize[0]/2)*m.sin(self.RPos[2])+self.RPos[0],(-self.RSize[1]/2)*m.sin(self.RPos[2])+(-self.RSize[0]/2)*m.cos(self.RPos[2])+self.RPos[1]))
-    #     points.append(((self.RSize[1]/2)*m.cos(self.RPos[2])-(-self.RSize[0]/2)*m.sin(self.RPos[2])+self.RPos[0],(self.RSize[1]/2)*m.sin(self.RPos[2])+(-self.RSize[0]/2)*m.cos(self.RPos[2])+self.RPos[1]))
-    #     pg.draw.polygon(screen, (0,0,0), points, 5)
-
     def move(self, vectors):
         vectors.append(self.vel)
         self.vel = self.vectorAdd(vectors)
@@ -130,7 +123,7 @@ class Robot:
 
 RPos = [100,100,0]
 field1 = Assets(assets)
-robot1 = Robot(assets[1], DSPos, IMUPos, rand)
+#robot1 = Robot(assets[1], DSPos, IMUPos, rand)
 FPS = 30
 fpsClock = pygame.time.Clock()
 
@@ -153,12 +146,13 @@ while True:
         accVectors.append((0,0,acc[0][1]/FPS*RAD))
     
         
-    robot1.move(accVectors)
+    #robot1.move(accVectors)
     for event in pg.event.get():
         if event.type == pg.QUIT:
             pg.quit()
             quit()
-    print("{}, {}, {}, {}".format(sensors.getDistance(robot1.RPos, 0),sensors.getDistance(robot1.RPos, 1) ,sensors.getDistance(robot1.RPos, 2) ,sensors.getDistance(robot1.RPos, 3)))
-    robot1.drawRobot()
+    #print("{}, {}, {}, {}".format(sensors.getDistance(robot1.RPos, 0),sensors.getDistance(robot1.RPos, 1) ,sensors.getDistance(robot1.RPos, 2) ,sensors.getDistance(robot1.RPos, 3)))
+    field1.drawAssets()
+    field1.moveAsset(0, (0,.01))
     pg.display.update()
     fpsClock.tick(FPS)
