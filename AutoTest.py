@@ -11,9 +11,9 @@ DEG = 57.2958
 RSize = (64,90)
 IMUPos = (0,0,0)
 DSPos = ((0,45,0),(32,0,90),(0,-45,180),(-32,0,270))
-assets = [[[100,100,0],[(0,(0,0,64,90,0),(0,0,0),4),(0,(32,0,10,10,0),(0,0,0),4)],(3,0),True,(-2,-20)]]
-assets.append([[240,300,0],[(1,(0,0,45),(255,0,0),4),(1,(0,0,37.5),(255,0,0),4),(1,(0,0,30),(255,0,0),4),(1,(0,0,3.25),(255,0,0),0)],(2,1,0,0),True,(-2,-20)])
-assets.append([[465,300,0],[(1,(0,0,45),(0,0,255),4),(1,(0,0,37.5),(0,0,255),4),(1,(0,0,30),(0,0,255),4),(1,(0,0,3.25),(0,0,255),0)],(2,1,0,0),True,(-2,-20)])
+assets = [[[100,100,0],[(0,(0,0,64,90,0),(0,0,0),4),(0,(0,32,10,10,0),(0,0,0),4)],(3,0),True,[0,0,0],(20,150,-2,-20)]]
+assets.append([[240,300,0],[(1,(0,0,45),(255,0,0),4),(1,(0,0,37.5),(255,0,0),4),(1,(0,0,30),(255,0,0),4),(1,(0,0,3.25),(255,0,0),0)],(2,1,0,0),True,[0,0,0],(20,150,-2,-20)])
+assets.append([[465,300,0],[(1,(0,0,45),(0,0,255),4),(1,(0,0,37.5),(0,0,255),4),(1,(0,0,30),(0,0,255),4),(1,(0,0,3.25),(0,0,255),0)],(2,1,0,0),True,[0,0,0],(20,150,-2,-20)])
 assets.append([[10,10,0],[(1,(0,0,37.5),(0,0,0),4)],(2),False])
 assets.append([[695,10,0],[(1,(0,0,37.5),(0,0,0),4)],(2),False])
 acc = (6,90)
@@ -23,11 +23,28 @@ maxRange = 250
 screen = pg.display.set_mode((fieldSize, fieldSize))
 
 
-class Assets:
-    def __init__(self, assets):
+class Feild:
+    def __init__(self, robots, assets):
         self.assets = assets
+        self.robot = robots
     def addAsset (self, asset):
         self.assets.append(asset)
+    def addRobot (self, robot):
+        self.robots.append(robot)
+    def stepSim (self):
+        for x, asset in enumerate(self.assets):
+            if asset[3] and sum(asset[4]) == 0:
+                vel = asset[4]
+                self.moveAsset(x, asset[4])
+                self.assets[x][4] = [vel[0]-asset[5][2],asset[5][0],vel[1],max(0,vel[2]-asset[5][3]) if vel[2] > 0 else min(0,vel[2]+asset[5][3])] 
+class Asset:
+    def __init__(self, asset):
+        self.asset = asset
+    def getPos(self):
+        return self.asset[0]
+    def get
+    
+
     def dist(self, p):
         dist = 1000
         for asset in assets:
@@ -46,13 +63,26 @@ class Assets:
             for s in asset[1]:
                 d = s[1]
                 if s[0] == 0:
-                    p = lambda x,y : (((y*d[3]/2)+d[1])*m.cos(d[4]+asset[0][2])-((x*d[2]/2)+d[0])*m.sin(d[4]+asset[0][2])+asset[0][0]-d[0],((y*d[3]/2)+d[1])*m.sin(d[4]+asset[0][2])+((x*d[2]/2)+d[0])*m.cos(d[4]+asset[0][2])+asset[0][1]-d[1])
+                    p = lambda x,y : (((x*d[2]/2+d[0])*m.cos(d[4]+asset[0][2]))-((y*d[3]/2+d[1])*m.sin(d[4]+asset[0][2]))+asset[0][0],((x*d[2]/2+d[0])*m.sin(d[4]+asset[0][2]))+((y*d[3]/2+d[1])*m.cos(d[4]+asset[0][2]))+asset[0][1])
                     pygame.draw.polygon(screen, s[2], (p(1,1),p(1,-1),p(-1,-1),p(-1,1)), s[3])
                 elif s[0] == 1:
                     pygame.draw.circle(screen, s[2], (d[0]+asset[0][0],d[1]+asset[0][1]), d[2], s[3])
+    def acc (self, num, vectors):
+        vel = self.assets[num][4]
+        x = 0
+        y = 0
+        a = 0
+        for v in vectors:
+            x += m.cos(v[1])*v[0] 
+            y += m.sin(v[1])*v[0]
+            a += v[2]
+            self.assets[num][4] = [min(m.sqrt(x**2+y**2)+vel[0],self.assets[num][5][0]), m.atan2(y, x), a]
     def moveAsset(self, num, v):
-        d = self.assets[num][0]
-        self.assets[num][0] = [d[0]+v[0]*m.cos(v[1]),d[1]+v[0]*m.sin(v[1]),d[2]+v[1]]
+        if self.assets[num][3]:
+            d = self.assets[num][0]
+            self.assets[num][0] = [d[0]+v[0]*m.cos(v[1]+m.pi/2),d[1]+v[0]*m.sin(v[1]+m.pi/2),(d[2]+v[2])%(m.pi*2)]
+    def moveTo(self, num, pos):
+        self.assets[num][0] = pos
     def checkCollision(self, num):
         pass
         
@@ -93,17 +123,19 @@ class Robot:
         self.vel = [0,0,0]
 
     def move(self, vectors):
-        vectors.append(self.vel)
-        self.vel = self.vectorAdd(vectors)
-        self.vel = [min(max(self.vel[0]+acc[1][0]/FPS*PPI,0),maxVel[0]/FPS*PPI),self.vel[1], min(max(0,self.vel[2]+acc[1][1]/FPS*RAD),maxVel[1]/FPS*RAD)if self.vel[2] > 0 else max(min(0,self.vel[2]-acc[1][1]/FPS*RAD),-1*maxVel[1]/FPS*RAD)]
-        vel = (m.cos(self.vel[1])*self.vel[0] + m.cos(self.vel[1])*self.vel[0], m.sin(self.vel[1])*self.vel[0] + m.sin(self.vel[1])*self.vel[0])
-        newPos = [self.RPos[0]+ vel[0]*m.cos(self.RPos[2]) + vel[1]*m.cos(m.pi/2 + self.RPos[2]), self.RPos[1] + vel[0]*m.sin(self.RPos[2]) + vel[1]*m.sin(m.pi/2 - self.RPos[2]), self.RPos[2]+self.vel[2]]
-        if not self.collisionDetection(newPos)[0]:
-            self.RPos[0] = newPos[0]
-            self.RPos[2] = newPos[2]
-        if not self.collisionDetection(newPos)[1]:
-            self.RPos[1] = newPos[1]
-            self.RPos[2] = newPos[2]
+
+
+        # vectors.append(self.vel)
+        # self.vel = self.vectorAdd(vectors)
+        # self.vel = [min(max(self.vel[0]+acc[1][0]/FPS*PPI,0),maxVel[0]/FPS*PPI),self.vel[1], min(max(0,self.vel[2]+acc[1][1]/FPS*RAD),maxVel[1]/FPS*RAD)if self.vel[2] > 0 else max(min(0,self.vel[2]-acc[1][1]/FPS*RAD),-1*maxVel[1]/FPS*RAD)]
+        # vel = (m.cos(self.vel[1])*self.vel[0] + m.cos(self.vel[1])*self.vel[0], m.sin(self.vel[1])*self.vel[0] + m.sin(self.vel[1])*self.vel[0])
+        # newPos = [self.RPos[0]+ vel[0]*m.cos(self.RPos[2]) + vel[1]*m.cos(m.pi/2 + self.RPos[2]), self.RPos[1] + vel[0]*m.sin(self.RPos[2]) + vel[1]*m.sin(m.pi/2 - self.RPos[2]), self.RPos[2]+self.vel[2]]
+        # if not self.collisionDetection(newPos)[0]:
+        #     self.RPos[0] = newPos[0]
+        #     self.RPos[2] = newPos[2]
+        # if not self.collisionDetection(newPos)[1]:
+        #     self.RPos[1] = newPos[1]
+        #     self.RPos[2] = newPos[2]
 
     def vectorAdd(self, vectors):
         x = 0
@@ -153,6 +185,6 @@ while True:
             quit()
     #print("{}, {}, {}, {}".format(sensors.getDistance(robot1.RPos, 0),sensors.getDistance(robot1.RPos, 1) ,sensors.getDistance(robot1.RPos, 2) ,sensors.getDistance(robot1.RPos, 3)))
     field1.drawAssets()
-    field1.moveAsset(0, (0,.01))
+    field1.moveAsset(0, accVectors)
     pg.display.update()
     fpsClock.tick(FPS)
